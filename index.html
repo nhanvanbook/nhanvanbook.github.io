@@ -749,7 +749,7 @@ document.addEventListener("focusout", () => setTimeout(() => {
 /* ---------- admin ---------- */
 const SECTIONS = [
   ["general","Thông tin chung"],["scale","Quy mô"],["license","License hàng tháng"],["impl","Chi phí triển khai"],
-  ["other","Chi phí một lần khác"],["ops","Vận hành và dự phòng"],["roi","Lợi ích và hoàn vốn"],["scope","Phạm vi phân hệ"],["reports","Báo cáo cơ bản"],["examples","Ví dụ báo cáo"],["plan","Lộ trình"],["next","Bước tiếp theo"],["access","Quyền người xem"]
+  ["other","Chi phí một lần khác"],["ops","Vận hành và dự phòng"],["roi","Lợi ích và hoàn vốn"],["scope","Phạm vi phân hệ"],["reports","Báo cáo cơ bản"],["examples","Ví dụ báo cáo"],["plan","Lộ trình"],["next","Bước tiếp theo"],["access","Quyền người xem"],["questions","Câu hỏi khảo sát"]
 ];
 const dis = () => canWrite ? "" : " disabled";
 const fNum = (path, label, unit = "", step = "any") => `<div class="f"><label for="f-${path}">${label} ${unit ? `<span class="unit">(${unit})</span>` : ""}</label><input class="in" type="number" step="${step}" id="f-${path}" data-path="${path}" value="${esc(getPath(path))}"${dis()}></div>`;
@@ -856,6 +856,9 @@ function renderAdmin() {
     ${canWrite ? `<div class="fields" style="margin-top:16px;align-items:end"><div class="f"><label for="pwUser">Đổi mật khẩu cho</label><select class="in" id="pwUser"><option value="view">view</option><option value="admin">admin</option></select></div>
       <div class="f"><label for="pwNew">Mật khẩu mới <span class="unit">(ít nhất 6 ký tự)</span></label><input class="in" id="pwNew" type="password" autocomplete="new-password"></div>
       <div class="f"><button class="btn primary" type="button" data-act="set-pw" style="justify-content:center">Đổi mật khẩu</button></div></div><p class="hint" id="pwMsg" style="margin:8px 0 0"></p>` : ""}`));
+  html.push(card("questions", 14, "Câu hỏi khảo sát", `${s.survey.questions.length} câu`, "Thêm, sửa, xoá câu hỏi và phân hệ khảo sát. Trình sửa nằm ở tab Khảo sát.", `
+    <div class="mod-grid">${s.survey.groups.map(g => `<div class="mod-col"><h3>${esc(g.name)} <span class="unit">${s.survey.questions.filter(q => q.group === g.id).length} câu</span></h3><p class="hint" style="margin:0">${esc(g.desc || "")}</p></div>`).join("")}</div>
+    ${canWrite ? `<div class="row-actions"><button class="btn primary" type="button" data-act="open-sv-edit">Mở trình sửa câu hỏi</button></div>` : ""}`));
   document.getElementById("sections").innerHTML = html.join("");
   renderKpis(r);
   markToc();
@@ -937,6 +940,7 @@ document.getElementById("viewAdmin").addEventListener("click", e => {
   else if (act === "add-report") { if (state.reports.filter(x => x.group === b.dataset.group).length >= 5) return; state.reports.push({ id: uid(), group: b.dataset.group, name: "Báo cáo mới", desc: "", tool: TOOLS[0] }); }
   else if (act === "reset-ask") { document.getElementById("resetBox").innerHTML = `<div class="confirm">Thay toàn bộ bằng số mẫu? <button class="btn danger" data-act="reset">Khôi phục</button><button class="btn" data-act="reset-cancel">Huỷ</button></div>`; return; }
   else if (act === "reset-cancel") { renderAdmin(); return; }
+  else if (act === "open-sv-edit") { svEdit = true; location.hash = "#khao-sat"; window.scrollTo(0, 0); return; }
   else if (act === "set-pw") {
     const msg = document.getElementById("pwMsg"), u = document.getElementById("pwUser").value, pw = document.getElementById("pwNew").value;
     if (pw.length < 6) { msg.textContent = "Mật khẩu cần ít nhất 6 ký tự."; return; }
@@ -1202,7 +1206,7 @@ function qHtml(q, n) {
 }
 function qEdit(q, i, n) {
   const choice = q.type === "one" || q.type === "multi";
-  return `<div class="q edit"><div class="q-n">${String(n).padStart(2, "0")}</div><div class="q-b">
+  return `<div class="q edit" id="qe-${q.id}"><div class="q-n">${String(n).padStart(2, "0")}</div><div class="q-b">
     <input class="in" style="font-weight:600" data-path="survey.questions.${i}.q" value="${esc(q.q)}" aria-label="Nội dung câu hỏi">
     <div class="q-row"><select class="in" data-path="survey.questions.${i}.type" aria-label="Kiểu trả lời">${QTYPES.map(([k, l]) => `<option value="${k}"${k === q.type ? " selected" : ""}>${l}</option>`).join("")}</select>
     <input class="in" data-path="survey.questions.${i}.hint" value="${esc(q.hint || "")}" placeholder="Gợi ý cho người trả lời" aria-label="Gợi ý"></div>
@@ -1221,6 +1225,12 @@ function renderSurvey() {
   if (!canWrite && draft.submitted) { svRoot.innerHTML = thanksHtml(); return; }
   const html = [];
   const req = k => !canWrite && (k === "person" || k === "company");
+  // admin: khung quản lý câu hỏi luôn ở đầu trang, không phụ thuộc thanh mục lục
+  if (canWrite) html.push(`<section class="card" id="sec-sv-admin"><div class="card-h"><span class="idx">QT</span><h2>Quản lý câu hỏi khảo sát</h2><span class="sum">${sv.groups.length} phân hệ · ${sv.questions.length} câu</span></div>
+    <p class="hint">${svEdit ? "Đang ở chế độ sửa: đổi nội dung, kiểu trả lời, các lựa chọn; bấm ✕ để xoá. Mỗi phân hệ có nút + Thêm câu hỏi ở cuối. Mọi thay đổi tự lưu." : "Thêm câu hỏi vào một phân hệ, hoặc bấm Sửa câu hỏi để sửa, xoá câu hỏi và phân hệ. Mọi thay đổi tự lưu."}</p>
+    <div class="row-actions" style="margin:0;align-items:center"><select class="in" id="qaGroup" style="width:auto;max-width:260px" aria-label="Phân hệ nhận câu hỏi mới">${sv.groups.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("")}</select>
+    <button class="btn primary" data-sv-act="quick-add"${sv.groups.length ? "" : " disabled"}>+ Thêm câu hỏi</button><button class="btn" data-sv-act="add-g">+ Thêm phân hệ</button>
+    <button class="btn${svEdit ? " primary" : ""}" data-sv-act="edit">${svEdit ? "Xong, quay lại xem phiếu" : "Sửa câu hỏi"}</button></div></section>`);
   html.push(`<section class="card" id="sec-sv-info"><div class="card-h"><span class="idx">00</span><h2>Thông tin người trả lời</h2><span class="sum" id="svSum">${done}/${total} câu</span></div>
     <p class="hint">${canWrite ? "Phần này là câu trả lời của chính bạn (tư vấn điền trong buổi phỏng vấn). Phiếu người dùng gửi về nằm ở mục Câu trả lời đã nhận bên dưới." : "Bản nháp tự lưu trên máy này trong lúc điền. Điền xong, bấm Hoàn tất khảo sát ở cuối trang để gửi cho nhóm dự án."}</p>
     <div class="fields">${[["company", "Đơn vị, phòng ban"], ["person", "Người trả lời"], ["role", "Chức vụ"], ["phone", "Điện thoại hoặc email"]].map(([k, l, t]) => `<div class="f"><label for="sv-i-${k}">${l}${req(k) ? '<span class="req">*</span>' : ""}</label><input class="in${req(k) && svShowMissing && !String(info[k] || "").trim() ? " bad" : ""}" id="sv-i-${k}" type="${t || "text"}" data-sv-info="${k}" value="${esc(info[k] || "")}"></div>`).join("")}</div>
@@ -1347,6 +1357,16 @@ document.getElementById("viewSurvey").addEventListener("click", async e => {
   if (act === "reload-resp") { loadResponses(); return; }
   if (!canWrite) return;
   if (act === "edit") { svEdit = !svEdit; svDelAsk = null; renderSurvey(); return; }
+  if (act === "quick-add") {
+    const gid = document.getElementById("qaGroup")?.value || state.survey.groups[0]?.id; if (!gid) return;
+    const id = uid();
+    state.survey.questions.push({ id, group: gid, q: "Câu hỏi mới", type: "one", opts: ["Có", "Không"], hint: "" });
+    svEdit = true; renderSurvey(); scheduleSave();
+    // đưa con trỏ tới câu vừa thêm để gõ nội dung ngay
+    const box = document.getElementById("qe-" + id), inp = box?.querySelector("input");
+    box?.scrollIntoView({ behavior: "smooth", block: "center" }); if (inp) { inp.focus({ preventScroll: true }); inp.select(); }
+    return;
+  }
   if (act === "add-q") state.survey.questions.push({ id: uid(), group: b.dataset.group, q: "Câu hỏi mới", type: "one", opts: ["Có", "Không"], hint: "" });
   else if (act === "del-q") state.survey.questions.splice(Number(b.dataset.i), 1);
   else if (act === "add-g") { const id = uid(); state.survey.groups.push({ id, name: "Phân hệ mới", desc: "" }); state.survey.questions.push({ id: uid(), group: id, q: "Câu hỏi mới", type: "text", opts: [], hint: "" }); }
