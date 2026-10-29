@@ -138,6 +138,11 @@ table.ed .in{padding:5px 8px}
 .resp .meta{font-size:12.5px;color:var(--muted)}
 .resp .pct{font-family:var(--f-mono);font-size:13px;color:var(--accent-deep);text-align:right}
 .resp pre{white-space:pre-wrap;font-family:var(--f-body);font-size:13px;background:var(--surface-2);border:1px solid var(--line);padding:12px 14px;margin:10px 0 0;max-height:420px;overflow:auto}
+.resp .tbl-wrap{margin-top:10px}
+table.ed.sum td{vertical-align:top;padding:8px}
+table.ed.sum td div+div{margin-top:3px}
+table.ed.sum .unit{color:var(--muted);font-size:12px}
+table.ed.sum .chip{white-space:normal;margin:0 0 4px}
 
 /* khảo sát */
 nav.toc a .cnt{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin-left:6px}
@@ -1224,6 +1229,46 @@ function respHtml() {
     ${responses.length ? responses.map(r => { const [a] = svCount(null, r); return `<details class="resp"><summary><div><b>${esc(r.surveyInfo.person || "Không tên")}</b><div class="meta">${esc([r.surveyInfo.company, r.surveyInfo.role].filter(Boolean).join(" · ") || "Chưa ghi đơn vị")} · tài khoản ${esc(r.account || "")} · ${esc(r.time || "")}</div></div><div class="pct">${a}/${total}</div></summary><pre>${esc(svText(r))}</pre></details>`; }).join("") : `<p class="hint" style="margin:0">Chưa có phiếu nào.</p>`}
     <div class="row-actions"><button class="btn" data-sv-act="reload-resp">Tải lại</button>${responses.length ? `<button class="btn primary" data-sv-act="csv-all">Tải CSV tổng hợp</button>` : ""}${sheetUrl && sheetUrl !== "#" ? `<a class="btn" href="${esc(sheetUrl)}" target="_blank" rel="noopener">Mở Google Sheet</a>` : ""}</div></section>`;
 }
+// bảng tổng hợp: mỗi câu hỏi một dòng, gộp câu trả lời của mọi phiếu đã nhận
+function sumRows() {
+  const titles = Object.fromEntries(FIX_RULES.filter(r => r.title).map(r => [r.key, r.title]));
+  const name = r => r.surveyInfo.person || "Không tên";
+  let n = 0;
+  return svGroups().map(g => ({ g, rows: state.survey.questions.filter(q => q.group === g.id).map(q => {
+    const ans = responses.map(r => ({ who: name(r), a: svAns(q.id, r) })).filter(x => answered(x.a));
+    let tally = null;
+    if (q.type === "one" || q.type === "multi") { const c = {}; ans.forEach(x => asList(x.a.v).forEach(o => c[o] = (c[o] || 0) + 1)); tally = Object.entries(c).sort((a, b) => b[1] - a[1]); }
+    const notes = responses.map(r => ({ who: name(r), note: String(svAns(q.id, r).note || "").trim() })).filter(x => x.note);
+    const issues = [...new Set(FIX_RULES.filter(r => r.q === q.id && ans.some(x => asList(x.a.v).some(o => r.when.includes(o)))).map(r => titles[r.key]))];
+    return { n: ++n, q, ans, tally, notes, issues };
+  }) }));
+}
+// nội dung ô "Tổng hợp trả lời": nhiều phiếu thì ghi số phiếu chọn hoặc tên người trả lời
+function sumAns(r, total, sep = "\n") {
+  if (r.tally) return r.tally.map(([o, k]) => total > 1 ? `${o} (${k}/${total})` : o).join(sep);
+  return r.ans.map(x => (total > 1 ? `${x.who}: ` : "") + ansText(x.a)).join(sep);
+}
+function sumHtml() {
+  if (!canWrite || !responses.length) return "";
+  const total = responses.length, groups = sumRows();
+  const allIssues = new Set(groups.flatMap(x => x.rows.flatMap(r => r.issues)));
+  const lines = s => s ? s.split("\n").map(x => `<div>${esc(x)}</div>`).join("") : `<span class="unit">Chưa trả lời</span>`;
+  const over = groups.map(({ g, rows }) => { const a = rows.filter(r => r.ans.length).length, iss = new Set(rows.flatMap(r => r.issues)).size, nt = rows.reduce((s, r) => s + r.notes.length, 0); return `<tr><td>${esc(g.name)}</td><td class="calc r">${a}/${rows.length}</td><td class="calc r">${nt}</td><td class="calc r">${iss || "–"}</td></tr>`; }).join("");
+  return `<section class="card" id="sec-sv-sum"><div class="card-h"><span class="idx">Σ</span><h2>Bảng tổng hợp câu trả lời</h2><span class="sum">${total} phiếu · ${allIssues.size} vấn đề</span></div>
+    <p class="hint">Gộp tất cả phiếu đã nhận theo từng câu hỏi${total > 1 ? "; số trong ngoặc là số phiếu chọn đáp án đó" : ""}. Cột Vấn đề phát hiện lấy từ mục Phân tích khảo sát (Phần 1). Bấm vào từng phân hệ để xem chi tiết.</p>
+    <div class="tbl-wrap"><table class="ed" style="min-width:520px"><thead><tr><th>Phân hệ</th><th class="r">Câu có trả lời</th><th class="r">Ghi chú</th><th class="r">Vấn đề phát hiện</th></tr></thead><tbody>${over}</tbody></table></div>
+    ${groups.map(({ g, rows }) => { const a = rows.filter(r => r.ans.length).length, iss = new Set(rows.flatMap(r => r.issues)).size; return `<details class="resp"><summary><div><b>${esc(g.name)}</b><div class="meta">${a}/${rows.length} câu có trả lời${iss ? ` · ${iss} vấn đề` : ""}</div></div><div class="pct">${a}/${rows.length}</div></summary>
+      <div class="tbl-wrap"><table class="ed sum" style="min-width:860px"><thead><tr><th style="width:4%">#</th><th style="width:28%">Câu hỏi</th><th style="width:30%">Tổng hợp trả lời</th><th style="width:18%">Ghi chú</th><th style="width:20%">Vấn đề phát hiện</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td class="calc">${r.n}</td><td>${esc(r.q.q)}</td><td>${lines(sumAns(r, total))}</td><td>${r.notes.map(x => `<div>${total > 1 ? `<b>${esc(x.who)}:</b> ` : ""}${esc(x.note)}</div>`).join("")}</td><td>${r.issues.map(t => `<em class="chip c-high">${esc(t)}</em>`).join(" ")}</td></tr>`).join("")}
+      </tbody></table></div></details>`; }).join("")}
+    <div class="row-actions"><button class="btn primary" data-sv-act="csv-sum">Tải bảng tổng hợp (CSV)</button></div></section>`;
+}
+function sumCsv() {
+  const cell = v => `"${String(v).replace(/"/g, '""')}"`, total = responses.length;
+  const rows = [["Phân hệ", "STT", "Câu hỏi", "Tổng hợp trả lời", "Ghi chú", "Vấn đề phát hiện"]];
+  sumRows().forEach(({ g, rows: rs }) => rs.forEach(r => rows.push([g.name, r.n, r.q.q, sumAns(r, total, "; "), r.notes.map(x => (total > 1 ? `${x.who}: ` : "") + x.note).join("; "), r.issues.join("; ")])));
+  return "﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n");
+}
 function fillNames() {}
 // phần Hoàn tất cho tài khoản xem
 function submitHtml(done, total, pct) {
@@ -1366,7 +1411,7 @@ function renderSurvey() {
     <div class="sv-prog"><div class="sv-bar"><i id="svBar" style="width:${pct}%"></i></div><span class="num" id="svPct">${pct}% hoàn thành</span>
     ${svResetAsk ? `<span class="confirm">Xoá hết câu trả lời? <button class="btn danger" data-sv-act="reset">Xoá</button><button class="btn" data-sv-act="reset-cancel">Huỷ</button></span>` : `<button class="btn ghost" style="color:var(--muted)" data-sv-act="reset-ask">Xoá câu trả lời</button>`}</div>
     ${svMsg && canWrite ? `<div class="notice" role="status">${svMsg}</div>` : ""}</section>`);
-  html.push(respHtml());
+  html.push(respHtml(), sumHtml());
   if (!groups.length) html.push(`<p class="hint">Chưa có phân hệ khảo sát nào được mở.</p>`);
   let n = 0;
   sv.groups.forEach((g, gi) => {
@@ -1463,6 +1508,11 @@ document.getElementById("viewSurvey").addEventListener("click", async e => {
   const act = b.dataset.svAct;
   if (act === "csv-all") {
     try { await downloads.save({ filename: `Tong-hop-khao-sat-${state.meta.client.replace(/[^\p{L}\p{N}]+/gu, "-")}.csv`, data: svCsvAll() }); flash("Đã tải file tổng hợp, mỗi người trả lời là một cột."); }
+    catch (err) { if (err?.code !== "declined") flash("Không tải được file ở chế độ xem này."); }
+    return;
+  }
+  if (act === "csv-sum") {
+    try { await downloads.save({ filename: `Bang-tong-hop-khao-sat-${state.meta.client.replace(/[^\p{L}\p{N}]+/gu, "-")}.csv`, data: sumCsv() }); flash("Đã tải bảng tổng hợp, mở được bằng Excel."); }
     catch (err) { if (err?.code !== "declined") flash("Không tải được file ở chế độ xem này."); }
     return;
   }
