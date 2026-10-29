@@ -184,7 +184,7 @@ textarea.sv-txt{min-height:0;resize:vertical}
 .stage{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden;border:1px solid var(--line);background:var(--bg);box-shadow:0 1px 0 rgba(10,30,30,.04),0 18px 40px -28px rgba(10,30,30,.35)}
 .stage:fullscreen{border:none;background:var(--bg)}
 .scaler{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0}
-.nav-hit{position:absolute;top:0;bottom:0;width:12%;border:none;background:none;cursor:pointer;z-index:2}
+.nav-hit{position:absolute;top:0;bottom:0;width:5%;border:none;background:none;cursor:pointer;z-index:2}
 .nav-hit.prev{left:0}.nav-hit.next{right:0}
 .deck-hint{color:var(--muted);font-size:12.5px;margin:10px 0 0}
 
@@ -194,7 +194,11 @@ textarea.sv-txt{min-height:0;resize:vertical}
 .slide .kicker b{font-weight:500;color:var(--accent-deep)}
 .slide h2{font-size:40px;line-height:1.16;font-weight:650;letter-spacing:-.018em;max-width:1060px}
 .slide .lead{font-size:19px;color:var(--ink-2);margin:12px 0 0;max-width:980px;line-height:1.5}
-.slide .body{flex:1;display:flex;gap:36px;margin-top:30px;min-height:0}
+.slide .body{flex:1;display:flex;gap:36px;margin-top:20px;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* nội dung dài hơn slide thì cuộn trong khung, tiêu đề bảng giữ ở trên */
+.slide .body .st thead th{position:sticky;top:0;z-index:1}
+.slide .body svg{display:block}
+.slide.more::after{content:"";position:absolute;left:72px;right:72px;bottom:54px;height:36px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
 .slide .foot{position:absolute;left:72px;right:72px;bottom:20px;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
 .big-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);width:100%}
 .bt{background:var(--surface);padding:24px 24px 22px;display:flex;flex-direction:column;gap:6px}
@@ -280,7 +284,6 @@ html,body{margin:0}
 .fix-t td b{display:block;font-weight:650;font-size:15px}
 .fix-t td span{display:block;color:var(--muted);font-size:12.5px}
 .fix-t th:nth-child(1){width:26%}.fix-t th:nth-child(2){width:9%}
-.fix-more{font-size:13px;color:var(--muted);margin:8px 0 0}
 .c-high{color:var(--danger);border-color:color-mix(in srgb,currentColor 35%,transparent);background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .slide.part2{justify-content:center;padding:72px 80px}
 .slide.part2 h1{font-size:72px;letter-spacing:-.03em;margin:8px 0 14px}
@@ -306,7 +309,10 @@ html,body{margin:0}
 .submit-card .btn.primary{font-size:15px;padding:10px 22px;align-self:flex-start}
 .req{color:var(--danger);margin-left:2px}
 .in.bad{border-color:var(--danger)}
-@media (max-width:560px){.who-chip span{display:none}}
+/* điện thoại: thanh trên chỉ giữ ba tab, chấm trạng thái lưu và nút Đăng xuất để không tràn ngang */
+@media (max-width:560px){.who-chip span{display:none}.topbar-in{gap:8px}.topbar .brand{display:none}
+  .pill{font-size:0;gap:0;padding:4px;border:none;background:none}.pill::before{width:9px;height:9px}
+  #btnLogout{padding:6px 8px;font-size:12.5px}}
 </style>
 </head>
 <body>
@@ -665,7 +671,7 @@ function publicJson(s) {
   return JSON.stringify(p);
 }
 const pill = document.getElementById("savePill");
-const setPill = (cls, text) => { pill.className = "pill " + cls; pill.textContent = text; };
+const setPill = (cls, text) => { pill.className = "pill " + cls; pill.textContent = text; pill.title = text; };
 
 /* ---------- máy chủ Apps Script ---------- */
 // mở file trên máy (file://) mà chưa có URL thì dùng máy chủ giả lập để xem thử; trang thật luôn gọi Apps Script
@@ -1030,12 +1036,11 @@ function buildSlides(r) {
     </div></div>${foot(i)}</section>`);
   // Phần 1: khắc phục vận hành
   const sevCls = v => v === "Cao" ? "c-high" : v === "Trung bình" ? "c-app" : "c-misa";
-  const top = fx.slice(0, 7);
   out.push(i => `<section class="slide"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Phần 1 · Khắc phục vận hành</div><h2>${fx.length ? `${fx.length} vấn đề vận hành nên xử lý ngay` : "Các vấn đề vận hành sẽ được tổng hợp từ khảo sát"}</h2>
     <p class="lead">${fx.length ? `Rút ra từ câu trả lời khảo sát${nResp ? ` của ${nResp} người` : ""}. Cột cuối là cách hệ thống mới ở Phần 2 giải quyết tận gốc.` : "Sau khi các phòng ban hoàn tất khảo sát, danh sách lỗi vận hành và cách khắc phục sẽ hiện ở đây."}</p>
     <div class="body">${fx.length ? `<table class="st fix-t"><thead><tr><th>Vấn đề hiện tại</th><th>Mức độ</th><th>Khắc phục ngay</th><th>Hệ thống mới xử lý</th></tr></thead><tbody>
-      ${top.map(f => `<tr><td><b>${esc(f.title)}</b><span>${esc(f.group || "")}</span></td><td>${`<em class="chip ${sevCls(f.sev)}">${esc(f.sev)}</em>`}</td><td>${esc(f.quick)}</td><td>${esc(f.sys)}</td></tr>`).join("")}
-      </tbody></table>${fx.length > top.length ? `<p class="fix-more">Còn ${fx.length - top.length} vấn đề khác trong bảng chi tiết.</p>` : ""}` : `<div class="callout" style="align-self:flex-start">Chưa có dữ liệu khảo sát.</div>`}</div>${foot(i)}</section>`);
+      ${fx.map(f => `<tr><td><b>${esc(f.title)}</b><span>${esc(f.group || "")}</span></td><td>${`<em class="chip ${sevCls(f.sev)}">${esc(f.sev)}</em>`}</td><td>${esc(f.quick)}</td><td>${esc(f.sys)}</td></tr>`).join("")}
+      </tbody></table>` : `<div class="callout" style="align-self:flex-start">Chưa có dữ liệu khảo sát.</div>`}</div>${foot(i)}</section>`);
   // mở đầu Phần 2
   out.push(i => `<section class="slide part2"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Phần 2</div><h1>Đề xuất hệ thống</h1><p class="stand">${esc(m.title)}: ${esc(m.subtitle)}</p>
     <div class="facts"><div><b>${s.groups.length}</b>phân hệ</div><div><b>${s.reports.length}</b>báo cáo cốt lõi</div><div><b>${money(r.tco)}</b>tổng chi phí ${r.Y} năm</div><div><b>${totalWeeks}</b>tuần triển khai</div></div>${foot(i)}</section>`);
@@ -1171,6 +1176,8 @@ function renderDeck() {
   slideIdx = Math.max(0, Math.min(slideIdx, slides.length - 1));
   if (!slides.length) { scaler.innerHTML = `<section class="slide"><h2>Chưa có slide nào được mở</h2></section>`; document.getElementById("slideCount").textContent = "0 / 0"; document.getElementById("dots").innerHTML = ""; fit(); return; }
   scaler.innerHTML = slides[slideIdx](slideIdx);
+  // slide có nội dung dài: hiện bóng mờ ở đáy để biết còn cuộn được, mất khi cuộn tới cuối
+  scaler.querySelectorAll(".slide .body").forEach(b => { const mark = () => b.closest(".slide").classList.toggle("more", b.scrollHeight - b.scrollTop - b.clientHeight > 2); mark(); b.addEventListener("scroll", mark, { passive: true }); });
   document.getElementById("slideCount").textContent = `${slideIdx + 1} / ${slides.length}${canWrite && hid.includes(list[slideIdx][1]) ? " · đang ẩn với người xem" : ""}`;
   document.getElementById("dots").innerHTML = slides.map((_, i) => `<button aria-label="Slide ${i + 1}" aria-current="${i === slideIdx}" data-go="${i}"></button>`).join("");
   fit();
@@ -1187,6 +1194,8 @@ document.getElementById("btnPrev").onclick = () => go(-1);
 document.getElementById("btnNext").onclick = () => go(1);
 document.getElementById("hitPrev").onclick = () => go(-1);
 document.getElementById("hitNext").onclick = () => go(1);
+// lăn chuột ở mép slide vẫn cuộn nội dung slide
+for (const id of ["hitPrev", "hitNext"]) document.getElementById(id).addEventListener("wheel", e => { const b = scaler.querySelector(".slide .body"); if (b && b.scrollHeight > b.clientHeight) { e.preventDefault(); b.scrollTop += e.deltaY; } }, { passive: false });
 document.getElementById("dots").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { slideIdx = Number(b.dataset.go); renderDeck(); } });
 document.getElementById("btnFull").onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await stage.requestFullscreen(); } catch (e) { document.getElementById("btnFull").textContent = "Không hỗ trợ toàn màn hình"; } };
 document.addEventListener("fullscreenchange", () => { document.getElementById("btnFull").textContent = document.fullscreenElement ? "Thoát toàn màn hình" : "Toàn màn hình"; setTimeout(fit, 50); });
