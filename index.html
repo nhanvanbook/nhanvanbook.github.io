@@ -560,7 +560,7 @@ const DEFAULTS = {
   surveyAns: {},
   access: { present: true, survey: true, hiddenSlides: [], hiddenSurveyGroups: [] },
   // Phần 1 của đề xuất: lỗi vận hành hiện tại, sinh từ câu trả lời khảo sát rồi admin chỉnh tay
-  analysis: { fixes: [], at: "" },
+  analysis: { fixes: [], at: "", src: "", dismissed: [] },
   nextSteps: "Phê duyệt chủ trương và ngân sách giai đoạn Khảo sát – Thiết kế\nChỉ định Project Sponsor và PM phía khách hàng\nXác nhận số cửa hàng, quầy POS, người dùng\nKý hợp đồng giai đoạn 1 (khoảng 6 tuần)\nChốt ngân sách toàn phần sau thiết kế giải pháp"
 };
 const BASIS = [["manual","Nhập tay"],["stores","= Số cửa hàng"],["pos","= Số quầy POS"],["entities","= Số pháp nhân"],["fullUsers","= User đầy đủ"],["teamUsers","= User xem/duyệt"]];
@@ -734,7 +734,12 @@ async function loadResponses() {
       const ans = {}; try { for (const a of JSON.parse(r.Du_lieu_JSON || "[]")) ans[a.id] = { v: a.answer, note: a.note }; } catch (e) {}
       return { id: r.Ma_phieu, account: r.Tai_khoan, time: r.Thoi_gian, updatedAt: Date.parse(String(r.Thoi_gian).replace(" ", "T")) || 0, surveyInfo: { person: r.Ho_ten, company: r.Don_vi, role: r.Chuc_vu, phone: r.Lien_he }, surveyAns: ans };
     }).sort((a, b) => b.updatedAt - a.updatedAt);
-    if (!document.getElementById("viewSurvey").hidden && !typingIn("viewSurvey")) renderSurvey();
+    // có phiếu mới hoặc phiếu sửa lại: tự phân tích để mục Phân tích và slide Phần 1 luôn có số liệu
+    const sig = responses.map(r => r.id + "@" + r.time).join("|");
+    if (responses.length && sig !== state.analysis.src) {
+      runAnalysis(); state.analysis.src = sig; scheduleSave();
+      if (!typingIn("viewAdmin") && !typingIn("viewSurvey")) renderAll();
+    } else if (!document.getElementById("viewSurvey").hidden && !typingIn("viewSurvey")) renderSurvey();
   } catch (e) { if (e.code === "expired") showLogin(e.message); }
 }
 const typingIn = id => { const ae = document.activeElement; return ae && document.getElementById(id).contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName); };
@@ -880,7 +885,7 @@ function renderAdmin() {
       <div class="f"><label for="pwNew">Mật khẩu mới <span class="unit">(ít nhất 6 ký tự)</span></label><input class="in" id="pwNew" type="password" autocomplete="new-password"></div>
       <div class="f"><button class="btn primary" type="button" data-act="set-pw" style="justify-content:center">Đổi mật khẩu</button></div></div><p class="hint" id="pwMsg" style="margin:8px 0 0"></p>` : ""}`));
   const fx = s.analysis.fixes, notes = canWrite ? surveyNotes() : [];
-  html.push(card("analysis", 14, "Phân tích khảo sát · Phần 1: khắc phục vận hành", `${fx.length} vấn đề`, `Bấm Phân tích để đọc các phiếu đã nhận (${responses.length} phiếu) và gợi ý lỗi vận hành của hệ thống hiện tại. Nội dung bạn sửa được giữ lại khi phân tích lại. Danh sách này hiện ở slide Phần 1; Phần 2 là các slide đề xuất hiện có.`, `
+  html.push(card("analysis", 14, "Phân tích khảo sát · Phần 1: khắc phục vận hành", `${fx.length} vấn đề`, `Trang tự phân tích mỗi khi có phiếu mới (hiện có ${responses.length} phiếu) và gợi ý lỗi vận hành của hệ thống hiện tại; bấm Phân tích để chạy lại ngay. Nội dung bạn sửa được giữ lại, vấn đề bạn đã xoá không bị thêm lại. Danh sách này hiện ở slide Phần 1; Phần 2 là các slide đề xuất hiện có.`, `
     ${canWrite ? `<div class="row-actions" style="margin:0 0 12px"><button class="btn primary" type="button" data-act="analyze">Phân tích từ câu trả lời</button><button class="btn" type="button" data-act="add" data-list="analysis.fixes">+ Thêm vấn đề</button>${s.analysis.at ? `<span class="hint" style="margin:0;align-self:center">Lần phân tích gần nhất: ${new Date(s.analysis.at).toLocaleString("vi-VN")}</span>` : ""}</div>` : ""}
     <div class="tbl-wrap"><table class="ed" style="min-width:980px"><thead><tr><th style="width:22%">Vấn đề hiện tại</th><th style="width:13%">Phân hệ</th><th style="width:10%">Mức độ</th><th style="width:8%">Số phiếu</th><th style="width:22%">Khắc phục ngay</th><th style="width:22%">Hệ thống mới xử lý</th><th></th></tr></thead><tbody>
     ${fx.map((f, i) => `<tr><td><input class="in" data-path="analysis.fixes.${i}.title" value="${esc(f.title)}" aria-label="Vấn đề"${dis()}></td><td><input class="in" data-path="analysis.fixes.${i}.group" value="${esc(f.group)}" aria-label="Phân hệ"${dis()}></td>
@@ -888,7 +893,7 @@ function renderAdmin() {
       <td class="calc" title="${esc(f.who || "")}">${f.total ? `${f.count}/${f.total}` : "tay"}</td>
       <td><textarea class="in" style="min-height:58px" data-path="analysis.fixes.${i}.quick" aria-label="Khắc phục ngay"${dis()}>${esc(f.quick)}</textarea></td>
       <td><textarea class="in" style="min-height:58px" data-path="analysis.fixes.${i}.sys" aria-label="Hệ thống mới xử lý"${dis()}>${esc(f.sys)}</textarea></td>
-      <td>${canWrite ? `<button class="btn ghost" data-act="del" data-list="analysis.fixes" data-i="${i}" aria-label="Xoá vấn đề">✕</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="hint" style="padding:14px">Chưa có vấn đề nào. Khi có phiếu khảo sát, bấm Phân tích từ câu trả lời.</td></tr>`}
+      <td>${canWrite ? `<button class="btn ghost" data-act="del" data-list="analysis.fixes" data-i="${i}" aria-label="Xoá vấn đề">✕</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="hint" style="padding:14px">Chưa có vấn đề nào. Khi có phiếu khảo sát, trang sẽ tự phân tích.</td></tr>`}
     </tbody></table></div>
     ${notes.length ? `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">Ghi chú của người trả lời (${notes.length}) – đọc để bổ sung vấn đề</summary><div style="margin-top:8px">${notes.map(n => `<div class="rep" style="grid-template-columns:1fr"><div class="rep-main"><b style="font-size:13.5px">${esc(n.note)}</b><span class="hint" style="margin:0">${esc(n.who)} · ${esc(n.q)}</span></div></div>`).join("")}</div></details>` : ""}`));
   html.push(card("questions", 15, "Câu hỏi khảo sát", `${s.survey.questions.length} câu`, "Thêm, sửa, xoá câu hỏi và phân hệ khảo sát. Trình sửa nằm ở tab Khảo sát.", `
@@ -964,7 +969,11 @@ document.getElementById("viewAdmin").addEventListener("click", e => {
   const j = e.target.closest("[data-jump]"); if (j) { e.preventDefault(); document.getElementById("sec-" + j.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   const b = e.target.closest("[data-act]"); if (!b || !canWrite) return;
   const act = b.dataset.act;
-  if (act === "del") { getPath(b.dataset.list).splice(Number(b.dataset.i), 1); }
+  if (act === "del") {
+    const [gone] = getPath(b.dataset.list).splice(Number(b.dataset.i), 1);
+    // vấn đề tự sinh admin đã xoá thì lần phân tích sau không thêm lại
+    if (b.dataset.list === "analysis.fixes" && gone?.auto) state.analysis.dismissed.push(gone.id);
+  }
   else if (act === "add") {
     const L = b.dataset.list, arr = getPath(L);
     const blank = { licenses: { id: uid(), name: "License mới", basis: "manual", qty: 1, price: 0 }, "impl.rows": { id: uid(), name: "Hạng mục mới", days: 0 }, other: { id: uid(), name: "Chi phí mới", basis: "manual", qty: 1, price: 0, include: true }, "plan.phases": { id: uid(), name: "Giai đoạn mới", start: 0, weeks: 2, key: false }, "analysis.fixes": { id: uid(), auto: false, group: "", title: "Vấn đề mới", quick: "", sys: "", sev: "Trung bình", count: 0, total: 0, who: "" } }[L];
@@ -1283,7 +1292,7 @@ function runAnalysis() {
     const old = fixes.find(x => x.id === key);
     // giữ nội dung admin đã sửa, chỉ cập nhật số liệu
     if (old) Object.assign(old, { count: n, total, who: [...f.who].join(", "), sev: old.sevLocked ? old.sev : sev });
-    else fixes.push({ id: key, auto: true, group: base[key].group, title: base[key].title, quick: base[key].quick, sys: base[key].sys, sev, count: n, total, who: [...f.who].join(", ") });
+    else if (!state.analysis.dismissed.includes(key)) fixes.push({ id: key, auto: true, group: base[key].group, title: base[key].title, quick: base[key].quick, sys: base[key].sys, sev, count: n, total, who: [...f.who].join(", ") });
   }
   fixes.sort((a, b) => SEV.indexOf(a.sev) - SEV.indexOf(b.sev) || (b.count || 0) - (a.count || 0));
   state.analysis.at = new Date().toISOString();
