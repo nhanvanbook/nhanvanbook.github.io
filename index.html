@@ -284,6 +284,12 @@ html,body{margin:0}
 .fix-t td b{display:block;font-weight:650;font-size:15px}
 .fix-t td span{display:block;color:var(--muted);font-size:12.5px}
 .fix-t th:nth-child(1){width:26%}.fix-t th:nth-child(2){width:9%}
+.inf-t{font-size:13.5px}
+.inf-t td{vertical-align:top;padding:8px 12px;line-height:1.35}
+.inf-t td b{font-weight:650}
+.inf-h{font-size:15px;font-weight:650;margin:16px 0 6px}
+.inf-l{margin:0;padding-left:20px;font-size:14px;line-height:1.45;color:var(--ink-2)}
+.inf-note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .c-high{color:var(--danger);border-color:color-mix(in srgb,currentColor 35%,transparent);background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .slide.part2{justify-content:center;padding:72px 80px}
 .slide.part2 h1{font-size:72px;letter-spacing:-.03em;margin:8px 0 14px}
@@ -569,7 +575,39 @@ const DEFAULTS = {
   survey: SURVEY_DEFAULT,
   surveyInfo: { company: "", person: "", role: "", date: "" },
   surveyAns: {},
-  access: { present: true, survey: true, hiddenSlides: [], hiddenSurveyGroups: [] },
+  // hạ tầng CNTT: slide mới mặc định ẩn với tài khoản view cho tới khi PO duyệt
+  access: { present: true, survey: true, hiddenSlides: ["infra", "infraeq"], hiddenSurveyGroups: [] },
+  infra: {
+    lead: "Hạ tầng hiện tại chưa đủ cho ERP chạy trên cloud: văn phòng có 1 đường Internet, chưa có firewall, 50 máy chưa quản lý tập trung. Gói hạ tầng riêng làm phần văn phòng xong trước khi khởi động ERP, độc lập với ERP.",
+    rows: [
+      { id: "ir1", item: "Internet văn phòng", now: "1 đường duy nhất", plan: "Thêm đường thứ 2, tự chuyển khi một đường lỗi (dual-WAN)" },
+      { id: "ir2", item: "Firewall", now: "Chưa có; router DrayTek kiêm VPN", plan: "FortiGate 60F làm điểm kiểm soát duy nhất: VPN, IPS, lọc web" },
+      { id: "ir3", item: "Switch", now: "3 switch không quản lý được", plan: "2 switch có VLAN, tách mạng máy chủ, người dùng, WiFi khách, POS" },
+      { id: "ir4", item: "Máy chủ", now: "Chỉ có máy chủ FAST đặt ở FPT và thuê của FAST", plan: "Máy chủ Dell PowerEdge R260 tại văn phòng, ảo hóa Active Directory, mail, giám sát, sao lưu" },
+      { id: "ir5", item: "Tài khoản, máy tính", now: "50 máy chạy Workgroup", plan: "Active Directory (2 Domain Controller) + Microsoft Entra ID, bắt buộc MFA" },
+      { id: "ir6", item: "Email", now: "Máy chủ mail riêng (nhanvancorp.com)", plan: "Máy chủ mail mới trên nhanvancorp.com.vn, chạy song song rồi mới chuyển dữ liệu cũ" },
+      { id: "ir7", item: "VPN cửa hàng", now: "DrayTek – DrayTek, 4 cửa hàng", plan: "Đi qua firewall, giữ thiết bị tại cửa hàng, dựng sẵn cho 8 cửa hàng" },
+      { id: "ir8", item: "Máy chủ FAST", now: "1 máy tại FPT Data Center + 1 máy thuê của FAST", plan: "Giữ nguyên tới khi ERP chạy ổn định, sau đó thu hồi về văn phòng" },
+      { id: "ir9", item: "Bảo mật", now: "Chưa có giải pháp tập trung", plan: "Antivirus/EDR, sao lưu 3-2-1, vá lỗi định kỳ, lưu log firewall" }
+    ],
+    phases: [
+      { id: "ih1", name: "HT1", work: "Lắp máy chủ, cài ảo hóa, firewall, switch VLAN, Active Directory, đưa 50 máy vào domain, sao lưu, giám sát", days: 17.5, due: "Trước khởi động ERP" },
+      { id: "ih2", name: "HT2", work: "Entra ID, MFA, máy chủ mail mới (.com.vn), chuyển 50 hộp thư", days: 9, due: "Trước khởi động ERP" },
+      { id: "ih3", name: "HT3", work: "VPN 4 cửa hàng qua firewall, tách WiFi cửa hàng, thay một phần thiết bị POS", days: 8.5, due: "Trước kiểm thử hệ thống" },
+      { id: "ih5", name: "HT5", work: "Thu hồi máy chủ FAST, dựng File Server và Web Server tại văn phòng", days: 11.5, due: "Sau go-live, khi ERP ổn định" }
+    ],
+    equip: [
+      { id: "ie1", name: "Firewall FortiGate 60F, kèm license bảo mật 1 năm", qty: "1", price: "~30 triệu đ gồm VAT; hàng nhập, giao 6–10 tuần" },
+      { id: "ie2", name: "Máy chủ Dell PowerEdge R260 (4 nhân / 8 luồng, RAM 128 GB, 480 GB SSD + 2 × 2,4 TB)", qty: "1", price: "~304 triệu đ gồm VAT, bảo hành 36 tháng" },
+      { id: "ie3", name: "Switch có VLAN: 24 cổng + 8–16 cổng PoE", qty: "2", price: "Chờ báo giá" },
+      { id: "ie4", name: "Windows Server Standard + CAL", qty: "1 + 50", price: "Chờ báo giá" },
+      { id: "ie5", name: "UPS cho máy chủ", qty: "1", price: "Chờ báo giá" },
+      { id: "ie6", name: "Microsoft 365 (Office, Entra ID)", qty: "50", price: "Gói đang chốt" },
+      { id: "ie7", name: "Đường Internet thứ 2", qty: "1", price: "Chờ báo giá nhà mạng" }
+    ],
+    note: "Giá tham khảo cập nhật 11/2026; Nhân Văn tự chọn nhà cung cấp và đặt mua.",
+    customer: "Tự chọn nhà cung cấp và đặt mua thiết bị\nChuẩn bị phòng máy chủ trước khi lắp máy: vách thạch cao khu tủ rack, máy lạnh, cửa khóa riêng, nguồn điện độc lập cho UPS\nĐặt firewall sớm: hàng nhập, giao 6–10 tuần"
+  },
   // Phần 1 của đề xuất: lỗi vận hành hiện tại, sinh từ câu trả lời khảo sát rồi admin chỉnh tay
   analysis: { fixes: [], at: "", src: "", dismissed: [] },
   nextSteps: "Phê duyệt chủ trương và ngân sách giai đoạn Khảo sát – Thiết kế\nChỉ định Project Sponsor và PM phía khách hàng\nXác nhận số cửa hàng, quầy POS, người dùng\nKý hợp đồng giai đoạn 1 (khoảng 6 tuần)\nChốt ngân sách toàn phần sau thiết kế giải pháp"
@@ -579,8 +617,10 @@ const REPORT_GROUPS = [["acc", "Kế toán"], ["sales", "Bán hàng"], ["inv", "
 const TOOLS = ["BC chuẩn", "LS Central", "Gói VN", "Power BI", "Tuỳ biến"];
 const GCLS = ["", "g", "b", "x"];
 // cùng thứ tự với buildSlides
-const SLIDE_KEYS = [["cover", "Trang bìa"], ["agenda", "Nội dung trình bày"], ["fixes", "Phần 1 · Khắc phục vận hành"], ["part2", "Phần 2 · Mở đầu đề xuất"], ["summary", "Tóm tắt đầu tư"], ["scope", "Phạm vi giải pháp"], ["reports", "Báo cáo cơ bản"], ["examples", "Ví dụ báo cáo"], ["license", "License thuê bao"], ["impl", "Chi phí triển khai"], ["tco", "Tổng chi phí sở hữu"], ["roi", "Lợi ích và hoàn vốn"], ["plan", "Lộ trình triển khai"], ["next", "Bước tiếp theo"]];
+const SLIDE_KEYS = [["cover", "Trang bìa"], ["agenda", "Nội dung trình bày"], ["fixes", "Phần 1 · Khắc phục vận hành"], ["part2", "Phần 2 · Mở đầu đề xuất"], ["summary", "Tóm tắt đầu tư"], ["scope", "Phạm vi giải pháp"], ["reports", "Báo cáo cơ bản"], ["examples", "Ví dụ báo cáo"], ["license", "License thuê bao"], ["impl", "Chi phí triển khai"], ["tco", "Tổng chi phí sở hữu"], ["roi", "Lợi ích và hoàn vốn"], ["plan", "Lộ trình triển khai"], ["infra", "Hạ tầng CNTT · hiện trạng và đề xuất"], ["infraeq", "Hạ tầng CNTT · lộ trình và thiết bị"], ["next", "Bước tiếp theo"]];
 let delGroupAsk = null;
+// ngày công hạ tầng trước go-live: bỏ các giai đoạn ghi "sau go-live"
+const infraDays = inf => (inf?.phases || []).filter(p => !/sau go-live/i.test(p.due || "")).reduce((a, p) => a + (Number(p.days) || 0), 0);
 
 const clone = o => JSON.parse(JSON.stringify(o));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -595,6 +635,8 @@ const normalize = raw => {
   if (raw && !raw.groups) s.modules = [...s.modules, ...DEFAULTS.modules.filter(m => m.group === "infra" && !s.modules.some(x => x.id === m.id))];
   // câu trả lời là map theo id câu hỏi, mergeDefaults không giữ được khoá lạ
   s.surveyAns = raw?.surveyAns && typeof raw.surveyAns === "object" && !Array.isArray(raw.surveyAns) ? raw.surveyAns : {};
+  // bản lưu trước khi có phần hạ tầng: ẩn 2 slide hạ tầng với người xem cho tới khi admin bật
+  if (raw && !raw.infra) s.access.hiddenSlides = [...new Set([...s.access.hiddenSlides, "infra", "infraeq"])];
   return s;
 };
 let state = clone(DEFAULTS);
@@ -661,7 +703,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbz83_CyyDQFO71ID6867V8y
 let canWrite = false, lastJson = "", saveTimer = null, pendingRemote = null;
 let token = null, role = null, userName = "", responses = [], sheetUrl = "";
 const db = null, userApi = null;
-const PRICING = ["scale", "licenses", "impl", "other", "ops", "roi", "groups", "modules", "reports", "examples", "plan", "nextSteps"];
+const PRICING = ["scale", "licenses", "impl", "other", "ops", "roi", "groups", "modules", "reports", "examples", "plan", "infra", "nextSteps"];
 function publicJson(s) {
   const a = s.access, p = clone(s);
   delete p.surveyAns; delete p.surveyInfo;
@@ -788,7 +830,7 @@ document.addEventListener("focusout", () => setTimeout(() => {
 /* ---------- admin ---------- */
 const SECTIONS = [
   ["general","Thông tin chung"],["scale","Quy mô"],["license","License hàng tháng"],["impl","Chi phí triển khai"],
-  ["other","Chi phí một lần khác"],["ops","Vận hành và dự phòng"],["roi","Lợi ích và hoàn vốn"],["scope","Phạm vi phân hệ"],["reports","Báo cáo cơ bản"],["examples","Ví dụ báo cáo"],["plan","Lộ trình"],["next","Bước tiếp theo"],["access","Quyền người xem"],["analysis","Phân tích khảo sát"],["questions","Câu hỏi khảo sát"]
+  ["other","Chi phí một lần khác"],["ops","Vận hành và dự phòng"],["roi","Lợi ích và hoàn vốn"],["scope","Phạm vi phân hệ"],["reports","Báo cáo cơ bản"],["examples","Ví dụ báo cáo"],["plan","Lộ trình"],["infra","Hạ tầng CNTT"],["next","Bước tiếp theo"],["access","Quyền người xem"],["analysis","Phân tích khảo sát"],["questions","Câu hỏi khảo sát"]
 ];
 const dis = () => canWrite ? "" : " disabled";
 const fNum = (path, label, unit = "", step = "any") => `<div class="f"><label for="f-${path}">${label} ${unit ? `<span class="unit">(${unit})</span>` : ""}</label><input class="in" type="number" step="${step}" id="f-${path}" data-path="${path}" value="${esc(getPath(path))}"${dis()}></div>`;
@@ -882,10 +924,32 @@ function renderAdmin() {
     <td>${canWrite ? `<button class="btn ghost" data-act="del" data-list="plan.phases" data-i="${i}" aria-label="Xoá dòng">✕</button>` : ""}</td></tr>`).join("")}
     </tbody></table></div>
     ${canWrite ? `<div class="row-actions"><button class="btn" data-act="add" data-list="plan.phases">+ Thêm giai đoạn</button></div>` : ""}`));
-  html.push(card("next", 12, "Bước tiếp theo và đề nghị", "", "Mỗi dòng là một bước trên slide cuối.", `
+  const inf = s.infra, delBtn = (L, i) => canWrite ? `<button class="btn ghost" data-act="del" data-list="${L}" data-i="${i}" aria-label="Xoá dòng">✕</button>` : "";
+  const inIn = (p, v, l) => `<input class="in" data-path="${p}" value="${esc(v)}" aria-label="${l}"${dis()}>`;
+  html.push(card("infra", 12, "Hạ tầng CNTT", `${nf(infraDays(inf), infraDays(inf) % 1 ? 1 : 0)} ngày công trước go-live`, "Hiện ở 2 slide Hạ tầng CNTT, ngay sau slide Lộ trình. Mặc định ẩn với tài khoản view: bật ở mục Quyền người xem khi PO duyệt nội dung gửi khách.", `
+    <div class="f"><label for="f-infra.lead">Câu dẫn slide</label><textarea class="in" style="min-height:64px" id="f-infra.lead" data-path="infra.lead"${dis()}>${esc(inf.lead)}</textarea></div>
+    <h3 class="inf-h">Hiện trạng và đề xuất</h3>
+    <div class="tbl-wrap"><table class="ed"><thead><tr><th style="width:20%">Thành phần</th><th style="width:34%">Hiện trạng</th><th>Đề xuất</th><th></th></tr></thead><tbody>
+    ${inf.rows.map((x, i) => `<tr><td>${inIn(`infra.rows.${i}.item`, x.item, "Thành phần")}</td><td>${inIn(`infra.rows.${i}.now`, x.now, "Hiện trạng")}</td><td>${inIn(`infra.rows.${i}.plan`, x.plan, "Đề xuất")}</td><td>${delBtn("infra.rows", i)}</td></tr>`).join("")}
+    </tbody></table></div>
+    ${canWrite ? `<div class="row-actions"><button class="btn" data-act="add" data-list="infra.rows">+ Thêm thành phần</button></div>` : ""}
+    <h3 class="inf-h">Giai đoạn và khối lượng</h3>
+    <div class="tbl-wrap"><table class="ed"><thead><tr><th style="width:10%">Giai đoạn</th><th style="width:50%">Công việc</th><th class="r" style="width:12%">Ngày công</th><th>Hoàn thành</th><th></th></tr></thead><tbody>
+    ${inf.phases.map((x, i) => `<tr><td>${inIn(`infra.phases.${i}.name`, x.name, "Giai đoạn")}</td><td>${inIn(`infra.phases.${i}.work`, x.work, "Công việc")}</td><td><input class="in" type="number" step="any" data-path="infra.phases.${i}.days" value="${esc(x.days)}" aria-label="Ngày công"${dis()}></td><td>${inIn(`infra.phases.${i}.due`, x.due, "Hoàn thành")}</td><td>${delBtn("infra.phases", i)}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="hint" style="margin:6px 0 0">Giai đoạn có chữ "sau go-live" ở cột Hoàn thành không cộng vào số ngày công trước go-live.</p>
+    ${canWrite ? `<div class="row-actions"><button class="btn" data-act="add" data-list="infra.phases">+ Thêm giai đoạn</button></div>` : ""}
+    <h3 class="inf-h">Thiết bị và license</h3>
+    <div class="tbl-wrap"><table class="ed"><thead><tr><th style="width:46%">Hạng mục</th><th style="width:10%">SL</th><th>Giá tham khảo</th><th></th></tr></thead><tbody>
+    ${inf.equip.map((x, i) => `<tr><td>${inIn(`infra.equip.${i}.name`, x.name, "Hạng mục")}</td><td>${inIn(`infra.equip.${i}.qty`, x.qty, "Số lượng")}</td><td>${inIn(`infra.equip.${i}.price`, x.price, "Giá tham khảo")}</td><td>${delBtn("infra.equip", i)}</td></tr>`).join("")}
+    </tbody></table></div>
+    ${canWrite ? `<div class="row-actions"><button class="btn" data-act="add" data-list="infra.equip">+ Thêm thiết bị</button></div>` : ""}
+    <div class="fields" style="margin-top:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">${fTxt("infra.note", "Ghi chú dưới bảng thiết bị")}
+      <div class="f"><label for="f-infra.customer">Việc phía khách hàng <span class="unit">(mỗi dòng một việc)</span></label><textarea class="in" style="min-height:84px" id="f-infra.customer" data-path="infra.customer"${dis()}>${esc(inf.customer)}</textarea></div></div>`));
+  html.push(card("next", 13, "Bước tiếp theo và đề nghị", "", "Mỗi dòng là một bước trên slide cuối.", `
     <div class="f"><label for="f-nextSteps">Các bước</label><textarea class="in" id="f-nextSteps" data-path="nextSteps"${dis()}>${esc(s.nextSteps)}</textarea></div>`));
   const ac = s.access, tick = (attr, on, label) => `<label class="acc"><input type="checkbox" ${attr} ${on ? "checked" : ""}${dis()}><span>${label}</span></label>`;
-  html.push(card("access", 13, "Quyền người xem", `${(ac.present ? 1 : 0) + (ac.survey ? 1 : 0)}/2 tab mở`, "Chọn những gì người không có quyền sửa được thấy. Tab Admin luôn ẩn với họ. Phần bị tắt không chỉ ẩn trên màn hình: dữ liệu đó không được gửi tới trình duyệt của người xem.", `
+  html.push(card("access", 14, "Quyền người xem", `${(ac.present ? 1 : 0) + (ac.survey ? 1 : 0)}/2 tab mở`, "Chọn những gì người không có quyền sửa được thấy. Tab Admin luôn ẩn với họ. Phần bị tắt không chỉ ẩn trên màn hình: dữ liệu đó không được gửi tới trình duyệt của người xem.", `
     <div class="mod-grid">
       <div class="mod-col"><h3>Tab được mở</h3>${tick('data-path="access.present"', ac.present, "Trình chiếu <span class='unit'>(gồm số liệu chi phí)</span>")}${tick('data-path="access.survey"', ac.survey, "Khảo sát <span class='unit'>(người được mời gửi câu trả lời về Admin)</span>")}</div>
       <div class="mod-col"><h3>Slide hiện cho người xem</h3>${SLIDE_KEYS.map(([k, l]) => tick(`data-acc-slide="${k}"${ac.present ? "" : " disabled"}`, !ac.hiddenSlides.includes(k), l)).join("")}</div>
@@ -896,7 +960,7 @@ function renderAdmin() {
       <div class="f"><label for="pwNew">Mật khẩu mới <span class="unit">(ít nhất 6 ký tự)</span></label><input class="in" id="pwNew" type="password" autocomplete="new-password"></div>
       <div class="f"><button class="btn primary" type="button" data-act="set-pw" style="justify-content:center">Đổi mật khẩu</button></div></div><p class="hint" id="pwMsg" style="margin:8px 0 0"></p>` : ""}`));
   const fx = s.analysis.fixes, notes = canWrite ? surveyNotes() : [];
-  html.push(card("analysis", 14, "Phân tích khảo sát · Phần 1: khắc phục vận hành", `${fx.length} vấn đề`, `Trang tự phân tích mỗi khi có phiếu mới (hiện có ${responses.length} phiếu) và gợi ý lỗi vận hành của hệ thống hiện tại; bấm Phân tích để chạy lại ngay. Nội dung bạn sửa được giữ lại, vấn đề bạn đã xoá không bị thêm lại. Danh sách này hiện ở slide Phần 1; Phần 2 là các slide đề xuất hiện có.`, `
+  html.push(card("analysis", 15, "Phân tích khảo sát · Phần 1: khắc phục vận hành", `${fx.length} vấn đề`, `Trang tự phân tích mỗi khi có phiếu mới (hiện có ${responses.length} phiếu) và gợi ý lỗi vận hành của hệ thống hiện tại; bấm Phân tích để chạy lại ngay. Nội dung bạn sửa được giữ lại, vấn đề bạn đã xoá không bị thêm lại. Danh sách này hiện ở slide Phần 1; Phần 2 là các slide đề xuất hiện có.`, `
     ${canWrite ? `<div class="row-actions" style="margin:0 0 12px"><button class="btn primary" type="button" data-act="analyze">Phân tích từ câu trả lời</button><button class="btn" type="button" data-act="add" data-list="analysis.fixes">+ Thêm vấn đề</button>${s.analysis.at ? `<span class="hint" style="margin:0;align-self:center">Lần phân tích gần nhất: ${new Date(s.analysis.at).toLocaleString("vi-VN")}</span>` : ""}</div>` : ""}
     <div class="tbl-wrap"><table class="ed" style="min-width:980px"><thead><tr><th style="width:22%">Vấn đề hiện tại</th><th style="width:13%">Phân hệ</th><th style="width:10%">Mức độ</th><th style="width:8%">Số phiếu</th><th style="width:22%">Khắc phục ngay</th><th style="width:22%">Hệ thống mới xử lý</th><th></th></tr></thead><tbody>
     ${fx.map((f, i) => `<tr><td><input class="in" data-path="analysis.fixes.${i}.title" value="${esc(f.title)}" aria-label="Vấn đề"${dis()}></td><td><input class="in" data-path="analysis.fixes.${i}.group" value="${esc(f.group)}" aria-label="Phân hệ"${dis()}></td>
@@ -907,7 +971,7 @@ function renderAdmin() {
       <td>${canWrite ? `<button class="btn ghost" data-act="del" data-list="analysis.fixes" data-i="${i}" aria-label="Xoá vấn đề">✕</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="hint" style="padding:14px">Chưa có vấn đề nào. Khi có phiếu khảo sát, trang sẽ tự phân tích.</td></tr>`}
     </tbody></table></div>
     ${notes.length ? `<details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">Ghi chú của người trả lời (${notes.length}) – đọc để bổ sung vấn đề</summary><div style="margin-top:8px">${notes.map(n => `<div class="rep" style="grid-template-columns:1fr"><div class="rep-main"><b style="font-size:13.5px">${esc(n.note)}</b><span class="hint" style="margin:0">${esc(n.who)} · ${esc(n.q)}</span></div></div>`).join("")}</div></details>` : ""}`));
-  html.push(card("questions", 15, "Câu hỏi khảo sát", `${s.survey.questions.length} câu`, "Thêm, sửa, xoá câu hỏi và phân hệ khảo sát. Trình sửa nằm ở tab Khảo sát.", `
+  html.push(card("questions", 16, "Câu hỏi khảo sát", `${s.survey.questions.length} câu`, "Thêm, sửa, xoá câu hỏi và phân hệ khảo sát. Trình sửa nằm ở tab Khảo sát.", `
     <div class="mod-grid">${s.survey.groups.map(g => `<div class="mod-col"><h3>${esc(g.name)} <span class="unit">${s.survey.questions.filter(q => q.group === g.id).length} câu</span></h3><p class="hint" style="margin:0">${esc(g.desc || "")}</p></div>`).join("")}</div>
     ${canWrite ? `<div class="row-actions"><button class="btn primary" type="button" data-act="open-sv-edit">Mở trình sửa câu hỏi</button></div>` : ""}`));
   document.getElementById("sections").innerHTML = html.join("");
@@ -987,7 +1051,7 @@ document.getElementById("viewAdmin").addEventListener("click", e => {
   }
   else if (act === "add") {
     const L = b.dataset.list, arr = getPath(L);
-    const blank = { licenses: { id: uid(), name: "License mới", basis: "manual", qty: 1, price: 0 }, "impl.rows": { id: uid(), name: "Hạng mục mới", days: 0 }, other: { id: uid(), name: "Chi phí mới", basis: "manual", qty: 1, price: 0, include: true }, "plan.phases": { id: uid(), name: "Giai đoạn mới", start: 0, weeks: 2, key: false }, "analysis.fixes": { id: uid(), auto: false, group: "", title: "Vấn đề mới", quick: "", sys: "", sev: "Trung bình", count: 0, total: 0, who: "" } }[L];
+    const blank = { licenses: { id: uid(), name: "License mới", basis: "manual", qty: 1, price: 0 }, "impl.rows": { id: uid(), name: "Hạng mục mới", days: 0 }, other: { id: uid(), name: "Chi phí mới", basis: "manual", qty: 1, price: 0, include: true }, "plan.phases": { id: uid(), name: "Giai đoạn mới", start: 0, weeks: 2, key: false }, "analysis.fixes": { id: uid(), auto: false, group: "", title: "Vấn đề mới", quick: "", sys: "", sev: "Trung bình", count: 0, total: 0, who: "" }, "infra.rows": { id: uid(), item: "Thành phần mới", now: "", plan: "" }, "infra.phases": { id: uid(), name: "HT", work: "", days: 0, due: "" }, "infra.equip": { id: uid(), name: "Thiết bị mới", qty: "1", price: "Chờ báo giá" } }[L];
     arr.push(blank);
   } else if (act === "add-mod") { state.modules.push({ id: uid(), group: b.dataset.group, on: true, name: "Hạng mục mới", desc: "" }); }
   else if (act === "add-group") { const id = uid(); state.groups.push({ id, name: "Phân hệ mới" }); state.modules.push({ id: uid(), group: id, on: true, name: "Hạng mục mới", desc: "" }); }
@@ -1106,6 +1170,21 @@ function buildSlides(r) {
   out.push(i => `<section class="slide"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Lộ trình triển khai</div><h2>${total} tuần từ khởi động đến roll-out toàn chuỗi</h2>
     <p class="lead">Khởi động ${dmy(new Date(s.plan.startDate + "T00:00:00Z"))}, hoàn tất khoảng ${my(addWeeks(s.plan.startDate, total))}. Làm sạch dữ liệu chạy song song từ tuần đầu.</p>
     <div class="body">${gantt(total)}</div>${foot(i)}</section>`);
+  // hạ tầng CNTT: hiện trạng → đề xuất, rồi lộ trình + thiết bị
+  const inf = s.infra || DEFAULTS.infra, infDays = infraDays(inf);
+  out.push(i => `<section class="slide"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Hạ tầng CNTT</div><h2>Hạ tầng sẵn sàng trước khi khởi động ERP</h2>
+    <p class="lead">${esc(inf.lead)}</p>
+    <div class="body"><table class="st inf-t"><thead><tr><th style="width:18%">Thành phần</th><th style="width:32%">Hiện trạng</th><th>Đề xuất</th></tr></thead><tbody>
+      ${inf.rows.map(x => `<tr><td><b>${esc(x.item)}</b></td><td>${esc(x.now)}</td><td>${esc(x.plan)}</td></tr>`).join("")}
+    </tbody></table></div>${foot(i)}</section>`);
+  const custTasks = String(inf.customer || "").split("\n").map(x => x.trim()).filter(Boolean);
+  out.push(i => `<section class="slide"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Hạ tầng CNTT</div><h2>Khoảng ${nf(infDays, infDays % 1 ? 1 : 0)} ngày công trước go-live, chia ${inf.phases.length} giai đoạn</h2>
+    <div class="body" style="gap:28px"><div style="flex:1.15;min-width:0"><table class="st inf-t"><thead><tr><th style="width:12%">Giai đoạn</th><th>Công việc</th><th class="r" style="width:13%">Ngày công</th><th style="width:22%">Hoàn thành</th></tr></thead><tbody>
+      ${inf.phases.map(p => `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.work)}</td><td class="r num">${nf(N(p.days), N(p.days) % 1 ? 1 : 0)}</td><td>${esc(p.due)}</td></tr>`).join("")}
+    </tbody></table>${custTasks.length ? `<h3 class="inf-h">Việc phía ${esc(m.client)}</h3><ul class="inf-l">${custTasks.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div>
+    <div style="flex:1;min-width:0"><table class="st inf-t"><thead><tr><th>Thiết bị, license</th><th style="width:12%">SL</th><th style="width:36%">Giá tham khảo</th></tr></thead><tbody>
+      ${inf.equip.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.qty)}</td><td>${esc(x.price)}</td></tr>`).join("")}
+    </tbody></table>${inf.note ? `<p class="inf-note">${esc(inf.note)}</p>` : ""}</div></div>${foot(i)}</section>`);
   // 9 next steps
   const steps = String(s.nextSteps || "").split("\n").map(x => x.trim()).filter(Boolean);
   out.push(i => `<section class="slide"><div class="kicker"><b>${String(i + 1).padStart(2, "0")}</b>Đề nghị</div><h2>Bước tiếp theo</h2>
